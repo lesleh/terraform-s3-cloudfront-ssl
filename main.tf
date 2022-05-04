@@ -4,16 +4,31 @@ resource "aws_s3_bucket" "s3_bucket" {
   tags = var.tags
 }
 
-resource "aws_s3_bucket_website_configuration" "s3_bucket" {
+resource "aws_s3_bucket_policy" "s3_bucket_policy" {
   bucket = aws_s3_bucket.s3_bucket.id
 
-  index_document {
-    suffix = "index.html"
+  policy = <<POLICY
+  {
+    "Version": "2008-10-17",
+    "Statement": [
+      {
+        "Sid": "AllowCloudFrontOriginAccess",
+        "Effect": "Allow",
+        "Principal": {
+          "AWS": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${aws_cloudfront_origin_access_identity.cf_access_identity.id}"
+        },
+        "Action": [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        "Resource": [
+          "arn:aws:s3:::${aws_s3_bucket.s3_bucket.bucket}",
+          "arn:aws:s3:::${aws_s3_bucket.s3_bucket.bucket}/*"
+        ]
+      }
+    ]
   }
-
-  error_document {
-    key = "error.html"
-  }
+POLICY
 }
 
 resource "aws_cloudfront_origin_access_identity" "cf_access_identity" {
