@@ -35,6 +35,13 @@ resource "aws_cloudfront_origin_access_identity" "cf_access_identity" {
   comment = "Identity for static site"
 }
 
+resource "aws_cloudfront_function" "cf_cache_headers_function" {
+  name    = "cf_cache_headers_function"
+  runtime = "cloudfront-js-1.0"
+
+  code = file("${path.module}/cf-cache-headers-function.js")
+}
+
 resource "aws_cloudfront_distribution" "cf_distribution" {
   enabled             = true
   default_root_object = "index.html"
@@ -58,6 +65,34 @@ resource "aws_cloudfront_distribution" "cf_distribution" {
 
       cookies {
         forward = "none"
+      }
+    }
+  }
+
+  dynamic "ordered_cache_behavior" {
+    for_each = var.cache_behaviors
+    content {
+      path_pattern     = ordered_cache_behavior.value
+      allowed_methods  = ["GET", "HEAD"]
+      cached_methods   = ["GET", "HEAD"]
+      target_origin_id = aws_s3_bucket.s3_bucket.bucket
+      viewer_protocol_policy = "redirect-to-https"
+
+      min_ttl     = 60 * 60 * 24 * 365
+      default_ttl = 60 * 60 * 24 * 365
+      max_ttl     = 60 * 60 * 24 * 365
+
+      forwarded_values {
+        query_string = false
+
+        cookies {
+          forward = "none"
+        }
+      }
+
+      function_association {
+        function_arn = aws_cloudfront_function.cf_cache_headers_function.arn
+        event_type   = "viewer-response"
       }
     }
   }

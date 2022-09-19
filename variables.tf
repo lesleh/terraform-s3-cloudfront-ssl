@@ -23,3 +23,8 @@ variable "route53_zone_id" {
   description = "Route 53 zone ID to apply the domain name to."
   type        = string
 }
+
+variable "cache_behaviors" {
+  type    = list
+  default = ["*.js", "*.css"]
+}
